@@ -31,47 +31,52 @@ cliSelect({
         fs.mkdirSync('./out');
     }
 
+    bricklinkPlus.api.category.getCategoryList().then(categoryList=>{
+        bricklinkPlus.api.inventory.getInventories({item_type:'part'}).then(inventories=>{
+            let inventoryCount = inventories.data.length;
+            console.log(inventoryCount +" Inventories loaded.")
 
-    bricklinkPlus.api.inventory.getInventories({item_type:'part'}).then(inventories=>{
-        let inventoryCount = inventories.data.length;
-        console.log(inventoryCount +" Inventories loaded.")
-
-        const statusQRCodeGenerationStarted = new cliProgress.SingleBar({format: 'QR Codes generated: |' + colors.cyan('{bar}') + '| {percentage}% ({value}/{total})'}, cliProgress.Presets.shades_grey);
-        const statusQRCodeGenerationFinished = new cliProgress.SingleBar({format: 'QR Codes saved: |' + colors.cyan('{bar}') + '| {percentage}% ({value}/{total})'}, cliProgress.Presets.shades_grey);
-        statusQRCodeGenerationStarted.start(inventoryCount, 0);
-        statusQRCodeGenerationFinished.start(inventoryCount, 0);
-        for (let i = 0; i < inventoryCount; i++) {
-            let inventory = inventories.data[i];
-            let url ="";
-            switch (selection.value) {
-                case 'public':
-                    url = "https://www.bricklink.com/v2/catalog/catalogitem.page?P="+encodeURIComponent(inventory.item.no)+"&C="+inventory.color_id;
-                    break;
-                default:
-                    break;
-            }
-            let filename = "No Name";
-            if(!inventory.color_name.includes("Not Applicable")){
-                filename = i + encodeURIComponent(inventory.item.no)+"_"+encodeURIComponent(inventory.color_name);
-            }else{
-                filename = i + encodeURIComponent(inventory.item.no);
-            }
-            qrcode.toFile("./out/"+filename+".png", url, {
-                errorCorrectionLevel: 'H'
-            }, function(err) {
-                if (err) throw err;
-                if(i>= inventoryCount-1){
-                    statusQRCodeGenerationFinished.stop();
-                    console.clear();
-                    console.log("All done!")
-                }else{
-                    statusQRCodeGenerationFinished.increment();
+            const statusQRCodeGenerationStarted = new cliProgress.SingleBar({format: 'QR Codes generated: |' + colors.cyan('{bar}') + '| {percentage}% ({value}/{total})'}, cliProgress.Presets.shades_grey);
+            const statusQRCodeGenerationFinished = new cliProgress.SingleBar({format: 'QR Codes saved: |' + colors.cyan('{bar}') + '| {percentage}% ({value}/{total})'}, cliProgress.Presets.shades_grey);
+            statusQRCodeGenerationStarted.start(inventoryCount, 0);
+            statusQRCodeGenerationFinished.start(inventoryCount, 0);
+            for (let i = 0; i < inventoryCount; i++) {
+                let inventory = inventories.data[i];
+                let url ="";
+                switch (selection.value) {
+                    case 'public':
+                        url = "https://www.bricklink.com/v2/catalog/catalogitem.page?P="+encodeURIComponent(inventory.item.no)+"&C="+inventory.color_id;
+                        break;
+                    default:
+                        break;
                 }
-            });
+                let filename = "No Name";
+                let category = categoryList.data.filter(c=>c.category_id===inventory.item.category_id)[0].category_name.replace("/","-").replace(" ","_");
+                if(!inventory.color_name.includes("Not Applicable")){
+                    filename = i + encodeURIComponent(inventory.item.no)+"_"+encodeURIComponent(inventory.color_name);
+                }else{
+                    filename = i + encodeURIComponent(inventory.item.no);
+                }
+                if (!fs.existsSync('./out/'+category)) {
+                    fs.mkdirSync('./out/'+category);
+                }
+                qrcode.toFile("./out/"+category+"/"+filename+".png", url, {
+                    errorCorrectionLevel: 'H'
+                }, function(err) {
+                    if (err) throw err;
+                    if(i>= inventoryCount-1){
+                        statusQRCodeGenerationFinished.stop();
+                        console.clear();
+                        console.log("All done!")
+                    }else{
+                        statusQRCodeGenerationFinished.increment();
+                    }
+                });
 
-            statusQRCodeGenerationStarted.increment();
-        }
-        statusQRCodeGenerationStarted.stop();
+                statusQRCodeGenerationStarted.increment();
+            }
+            statusQRCodeGenerationStarted.stop();
+        });
     });
 });
 
